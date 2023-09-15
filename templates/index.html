@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulation de Pays</title>
+<link
+  rel="stylesheet"
+  href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+/>
+</head>
+<body>
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-12 text-center">
+      <h1 class="my-4">Simulation de Pays Imaginaire</h1>
+      <p>Année : <span id="année">2023</span></p>
+      <p>Population : <span id="population">1000000</span></p>
+    </div>
+  </div>
+  <div class="row justify-content-center">
+    <div class="col-12 text-center">
+      <button class="btn btn-primary mx-1" onclick="init()">Initialiser</button>
+      <button class="btn btn-primary mx-1" onclick="avancer()">Avancer</button>
+      <button class="btn btn-success mx-1" onclick="demarrerEvolution()">Démarrer l'évolution</button>
+      <button class="btn btn-warning mx-1" onclick="pauseEvolution()">Pause</button>
+      <button class="btn btn-secondary mx-1" onclick="openForm()">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<div class="form-popup" id="myForm">
+  <form action="/sauvegarder" class="form-container p-3" method="POST">
+    <label for="prenom" class="mb-2"><b>Prénom</b></label>
+    <input type="text" placeholder="Entrez votre prénom" name="prenom" required class="form-control mb-3">
+    <button type="submit" class="btn btn-success mb-2">Sauvegarder</button>
+    <button type="button" class="btn btn-danger mb-2" onclick="closeForm()">Fermer</button>
+  </form>
+</div>
+
+<style>
+.form-popup {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  right: 15px;
+  border: 3px solid #f1f1f1;
+  z-index: 9;
+  background-color: white;
+  border-radius: 5px;
+}
+
+.form-container {
+  max-width: 300px;
+}
+</style>
+
+<script>
+let intervalId;
+
+async function fetchJSON(url) {
+    const response = await fetch(url);
+    return await response.json();
+}
+
+async function init() {
+    const data = await fetchJSON('/init');
+    document.getElementById('année').textContent = data.année;
+    document.getElementById('population').textContent = data.population;
+}
+
+async function avancer() {
+    const data = await fetchJSON('/avancer');
+    document.getElementById('année').textContent = data.année;
+    document.getElementById('population').textContent = data.population;
+}
+
+function demarrerEvolution() {
+    if (intervalId) {
+        clearInterval(intervalId);
+    }
+    intervalId = setInterval(() => {
+        avancer();
+    }, 1000);
+}
+
+function pauseEvolution() {
+    if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+}
+
+function openForm() {
+  document.getElementById("myForm").style.display = "block";
+}
+
+function closeForm() {
+  document.getElementById("myForm").style.display = "none";
+}
+</script>
+</body>
+</html>
