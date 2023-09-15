@@ -10,12 +10,22 @@
 />
 </head>
 <body>
+<div class="alert alert-success" id="success-alert" style="display: none; position: fixed; top: 20px; width: 100%; text-align: center; z-index: 1000; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);">
+    Données enregistrées avec succès
+</div>
 <div class="container">
   <div class="row justify-content-center">
     <div class="col-12 text-center">
       <h1 class="my-4">Simulation de Pays Imaginaire</h1>
-      <p>Année : <span id="année">2023</span></p>
-      <p>Population : <span id="population">1000000</span></p>
+      <p>Année : <span id="année">1970</span></p>
+      <p>Pays: <span id="pays">{{default_country_name}}</span></p>
+      <p>Population : <span id="population">{{default_population}}</span></p>
+      <label for="country">Sélectionnez un pays : </label>
+        <select id="country" name="country">
+            {% for country_name in country_names %}
+            <option value="{{ country_name }}">{{ country_name }}</option>
+            {% endfor %}
+        </select>
     </div>
   </div>
   <div class="row justify-content-center">
@@ -25,17 +35,20 @@
       <button class="btn btn-success mx-1" onclick="demarrerEvolution()">Démarrer l'évolution</button>
       <button class="btn btn-warning mx-1" onclick="pauseEvolution()">Pause</button>
       <button class="btn btn-secondary mx-1" onclick="openForm()">Sauvegarder</button>
+
     </div>
   </div>
 </div>
 
 <div class="form-popup" id="myForm">
-  <form action="/sauvegarder" class="form-container p-3" method="POST">
-    <label for="prenom" class="mb-2"><b>Prénom</b></label>
-    <input type="text" placeholder="Entrez votre prénom" name="prenom" required class="form-control mb-3">
-    <button type="submit" class="btn btn-success mb-2">Sauvegarder</button>
-    <button type="button" class="btn btn-danger mb-2" onclick="closeForm()">Fermer</button>
-  </form>
+    <form action="/sauvegarder" class="form-container" method="POST" onsubmit="event.preventDefault(); sauvegarder();">
+      <label for="prenom"><b>Prénom</b></label>
+      <input type="text" placeholder="Entrez votre prénom" name="prenom" required>
+  
+      <button type="button" class="btn btn-success" onclick="sauvegarder()">Sauvegarder</button>
+      <button type="button" class="btn btn-danger" onclick="closeForm()">Fermer</button>
+    </form>
+  </div>
 </div>
 
 <style>
@@ -70,10 +83,39 @@ async function init() {
 }
 
 async function avancer() {
-    const data = await fetchJSON('/avancer');
+    const country = document.getElementById('country').value;
+    const data = await fetchJSON(`/avancer?country=${country}`);
     document.getElementById('année').textContent = data.année;
     document.getElementById('population').textContent = data.population;
 }
+
+async function sauvegarder() {
+        const prenom = document.querySelector('input[name="prenom"]').value;
+        try {
+            const response = await fetch('/sauvegarder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ prenom }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('success-alert').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('success-alert').style.display = 'none';
+                }, 2000);
+            } else {
+                console.error('Erreur lors de la sauvegarde', result);
+            }
+        } catch (error) {
+            console.error('Erreur lors de l’envoi de la requête', error);
+        }
+    }
+
+    
 
 function demarrerEvolution() {
     if (intervalId) {
