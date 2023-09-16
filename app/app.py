@@ -1,22 +1,22 @@
 from flask import Flask, jsonify, render_template, request
 from psycopg2 import connect
-from datetime import datetime
-from model import predict_population
 import pickle
 import pandas as pd
 
 data = pd.read_csv('data/data.csv')
+country_names = data['Name'].dropna().unique().tolist()
+
 # Chargez la liste all_CCA3
-with open('all_CCA3.pkl', 'rb') as f:
+with open('data/all_CCA3.pkl', 'rb') as f:
     all_CCA3 = pickle.load(f)
 
 # Charger le modèle
-with open('model.pkl', 'rb') as f:
+with open('data/model.pkl', 'rb') as f:
     model = pickle.load(f)
 
 def get_population_from_1970(country_name):
     country_data = data[data['Name'] == country_name]
-    return country_data['1970'].values[0]
+    return int(country_data['1970'].values[0])
 
 # Connexion à la base de données
 conn = connect(dbname="simulation_db", user="user", password="password", host="db")
@@ -27,64 +27,63 @@ cursor.execute('''
         prenom VARCHAR(50),
         annee INT,
         population BIGINT,
-        taux_de_natalite FLOAT,
-        taux_de_mortalite FLOAT,
         timestamp TIMESTAMP
     )
 ''')
 conn.commit()
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder='../templates', static_folder='../static')
 
 # État initial de la simulation
 simulation_state = {
     "année": 1970,
     "population": 1000000,
-    "taux_de_natalité": 0.012, 
-    "taux_de_mortalité": 0.009,
 }
 
-# Charger les noms des pays à partir du fichier CSV
-data = pd.read_csv('data/data.csv')
-country_names = data['Name'].dropna().unique().tolist()
+
+
+@app.route('/get_country_data', methods=['GET'])
+def get_country_data():
+    global simulation_state  
+    country_name = request.args.get('country_name')
+    population_1970 = get_population_from_1970(country_name)
+    simulation_state = {
+        "année": 1970,
+        "pays": country_name,
+        "population": population_1970,  # Remplacez par la vraie population de 1970 pour le pays spécifié
+    }
+    return jsonify(simulation_state)
 
 @app.route("/", methods=['GET', 'POST'])
 def index():
-    if request.method == 'POST':
-        # Votre logique existante
-        pass
-    else:
-        # Pour obtenir la population de 1970 pour le pays par défaut
-        default_country_name = "France"  # par exemple, pour la France
-        default_population = get_population_from_1970(default_country_name)
-        return render_template('index.html',
-                               default_population=default_population,
-                               default_country_name=default_country_name,
-                               country_names=country_names)
+    # Pour obtenir la population de 1970 pour le pays par défaut
+    default_country_name = "France"  # par exemple, pour la France
+    default_population = get_population_from_1970(default_country_name)
+    return render_template('index.html',
+                            default_population=default_population,
+                            default_country_name=default_country_name,
+                            country_names=country_names)
 
 @app.route('/select_country', methods=['POST'])
 def select_country():
-    global selected_country
+    global simulation_state
     selected_country = request.form['country']
-    return jsonify({"message": "Pays sélectionné"}), 200
+    simulation_state["année"] = 1970
+    simulation_state["population"] = get_population_from_1970(selected_country)
+    return jsonify(simulation_state), 200
 
 @app.route('/init', methods=['GET'])
 def init():
     global simulation_state
     simulation_state = {
-        "année": 2023,
-        "population": 1000000,
-        "taux_de_natalité": 0.012,
-        "taux_de_mortalité": 0.009,
+        "année": 1970,
+        "population": 1000000
     }
     return jsonify(simulation_state), 200
 
 @app.route('/avancer', methods=['GET'])
 def avancer():
     country_name = request.args.get('country')
-
-    global simulation_state
-    
     cca3_code = data.loc[data['Name'] == country_name, 'CCA3'].values[0]
     # Préparez les données pour la prédiction
     input_data = pd.DataFrame([{
@@ -106,20 +105,15 @@ def avancer():
 
     return jsonify(simulation_state), 200
 
-@app.route('/etat', methods=['GET'])
-def etat():
-    global simulation_state
-    return jsonify(simulation_state), 200
-
 @app.route('/sauvegarder', methods=['POST'])
 def sauvegarder():
     global simulation_state
     prenom = request.form['prenom']
     try:
         cursor.execute('''
-            INSERT INTO simulations (prenom, annee, population, taux_de_natalite, taux_de_mortalite)
-            VALUES (%s, %s, %s, %s, %s)
-        ''', (prenom, simulation_state["année"], simulation_state["population"], simulation_state["taux_de_natalité"], simulation_state["taux_de_mortalité"]))
+            INSERT INTO simulations (prenom, annee, population)
+            VALUES (%s, %s, %s)
+        ''', (prenom, simulation_state["année"], simulation_state["population"]))
         conn.commit()
     except Exception as e:
         conn.rollback()

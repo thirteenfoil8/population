@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 80
 
 # Définit la commande pour démarrer l'application
-CMD ["python", "./app.py"]
+CMD ["python", "./app/app.py" ]

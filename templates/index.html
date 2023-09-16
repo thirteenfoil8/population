@@ -8,8 +8,11 @@
   rel="stylesheet"
   href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
 />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
 <div class="alert alert-success" id="success-alert" style="display: none; position: fixed; top: 20px; width: 100%; text-align: center; z-index: 1000; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);">
     Données enregistrées avec succès
 </div>
@@ -21,16 +24,19 @@
       <p>Pays: <span id="pays">{{default_country_name}}</span></p>
       <p>Population : <span id="population">{{default_population}}</span></p>
       <label for="country">Sélectionnez un pays : </label>
-        <select id="country" name="country">
+        <select id="country" name="country" onchange="updateCountryData()">
             {% for country_name in country_names %}
-            <option value="{{ country_name }}">{{ country_name }}</option>
+            <option value="{{ country_name }}" 
+                    {% if country_name == default_country_name %}selected{% endif %}>
+                    {{ country_name }}
+            </option>
             {% endfor %}
         </select>
     </div>
   </div>
   <div class="row justify-content-center">
     <div class="col-12 text-center">
-      <button class="btn btn-primary mx-1" onclick="init()">Initialiser</button>
+      <button class="btn btn-primary mx-1" onclick="initializeData()">Initialiser</button>
       <button class="btn btn-primary mx-1" onclick="avancer()">Avancer</button>
       <button class="btn btn-success mx-1" onclick="demarrerEvolution()">Démarrer l'évolution</button>
       <button class="btn btn-warning mx-1" onclick="pauseEvolution()">Pause</button>
@@ -50,96 +56,5 @@
     </form>
   </div>
 </div>
-
-<style>
-.form-popup {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  right: 15px;
-  border: 3px solid #f1f1f1;
-  z-index: 9;
-  background-color: white;
-  border-radius: 5px;
-}
-
-.form-container {
-  max-width: 300px;
-}
-</style>
-
-<script>
-let intervalId;
-
-async function fetchJSON(url) {
-    const response = await fetch(url);
-    return await response.json();
-}
-
-async function init() {
-    const data = await fetchJSON('/init');
-    document.getElementById('année').textContent = data.année;
-    document.getElementById('population').textContent = data.population;
-}
-
-async function avancer() {
-    const country = document.getElementById('country').value;
-    const data = await fetchJSON(`/avancer?country=${country}`);
-    document.getElementById('année').textContent = data.année;
-    document.getElementById('population').textContent = data.population;
-}
-
-async function sauvegarder() {
-        const prenom = document.querySelector('input[name="prenom"]').value;
-        try {
-            const response = await fetch('/sauvegarder', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({ prenom }),
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                document.getElementById('success-alert').style.display = 'block';
-                setTimeout(() => {
-                    document.getElementById('success-alert').style.display = 'none';
-                }, 2000);
-            } else {
-                console.error('Erreur lors de la sauvegarde', result);
-            }
-        } catch (error) {
-            console.error('Erreur lors de l’envoi de la requête', error);
-        }
-    }
-
-    
-
-function demarrerEvolution() {
-    if (intervalId) {
-        clearInterval(intervalId);
-    }
-    intervalId = setInterval(() => {
-        avancer();
-    }, 1000);
-}
-
-function pauseEvolution() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-    }
-}
-
-function openForm() {
-  document.getElementById("myForm").style.display = "block";
-}
-
-function closeForm() {
-  document.getElementById("myForm").style.display = "none";
-}
-</script>
 </body>
 </html>
